@@ -32,13 +32,28 @@ class CPU:
             address += 1
 
     def ram_read(self, address):
-        """Read Ram"""
-        return self.ram[address]
+        """
+        Read From Ram
+        Returns: the value from the ram
+        """
+        reg_num = int(self.ram[address + 1])
+        value = self.ram[address + 2]
+        return value
+        
 
     def ram_write(self, address, value):
-        """Write Ram"""
-        self.ram[address] = value
-        return self.ram[address]
+        """
+        Write to Register
+        """
+        reg_num = int(self.ram[address + 1])
+        self.reg[reg_num] = value
+
+    def print_reg(self, address):
+        """
+        Print the register's value
+        """
+        reg_num = int(self.ram[address+1])
+        print(self.reg[reg_num])
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -82,16 +97,15 @@ class CPU:
             instruction = self.ram[pc]
 
             if instruction == LDI:
-                reg_num = int(self.ram[pc + 1])
-                value = self.ram[pc + 2]
-                self.reg[reg_num] = value
+                value = self.ram_read(pc)
+                self.ram_write(pc, value)
                 pc += 3
             elif instruction == PRN:
-                reg_num = int(self.ram[pc+1])
-                print(self.reg[reg_num])
+                self.print_reg(pc)
                 pc += 2
             elif instruction == HLT:
                 halt = True
+                pc += 1
             else:
                 print(f'Unknown instruction at index {pc}')
                 sys.exit(1)
