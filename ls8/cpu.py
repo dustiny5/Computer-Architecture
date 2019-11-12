@@ -17,7 +17,6 @@ class CPU:
         self.branchtable = {}
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
-        self.branchtable[HLT] = self.handle_hlt
         self.branchtable[MUL] = self.handle_mul
     
     def handle_ldi(self, pc):
@@ -26,10 +25,6 @@ class CPU:
 
     def handle_prn(self, pc):
         self.print_reg(pc)
-
-    def handle_hlt(self, pc):
-        global halt
-        halt = True
 
     def handle_mul(self, pc):
         reg_a = int(self.ram[pc + 1])
@@ -133,13 +128,8 @@ class CPU:
         """Run the CPU."""
         # AND masking: to get `DDDD` or the last 4 digits
 
-        # AND masking: Get ALU or Other
-        get_alu = 0b00100000
-
-        global halt
         halt = False
         pc = 0
-
 
         while not halt:
             
@@ -149,25 +139,18 @@ class CPU:
             # Get the 2 bit of info for the operand amount
             get_operand_num = instruction >> 6
 
-            # If ALU/32 or Other/0
-            alu_other = instruction & get_alu
-
-            # If not ALU
-            if alu_other == 0:
-                if instruction:
-                    self.branchtable[instruction](pc)
-
-                # If Error
-                else:
-                    print(f'Unknown instruction at index {pc}')
-                    sys.exit(1)
-
-                # Increment by: Extracted from the instruction
-                pc += get_operand_num + 1
-
-            # If ALU, `alu_other == 32`
-            else:
-
+            # If not HLT
+            if instruction != HLT:
                 self.branchtable[instruction](pc)
-                
-                pc += get_operand_num + 1
+
+            # If HLT
+            elif instruction == HLT:
+                halt = True
+
+            # If Error
+            else:
+                print(f'Unknown instruction at index {pc}')
+                sys.exit(1)
+
+            # Increment by: Extracted from the instruction
+            pc += get_operand_num + 1
