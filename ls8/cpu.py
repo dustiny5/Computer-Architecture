@@ -111,14 +111,14 @@ class CPU:
         """
         Write to Register
         """
-        reg_num = int(self.ram[address + 1])
+        reg_num = self.ram[address + 1]
         self.reg[reg_num] = value
 
     def print_reg(self, address):
         """
         Print the register's value
         """
-        reg_num = int(self.ram[address + 1])
+        reg_num = self.ram[address + 1]
         print(self.reg[reg_num])
 
     def alu(self, op, reg_a, reg_b):
