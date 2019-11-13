@@ -6,18 +6,25 @@ LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
+
 
 class CPU:
     """Main CPU class."""
-
+    # Last register reserved for stack pointer(sp)
+    sp = -1
     def __init__(self):
         """Construct a new CPU."""
         self.reg = [0] * 8
         self.ram = [0] * 256
+        self.reg[self.sp] = 0xF4 
         self.branchtable = {}
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[MUL] = self.handle_mul
+        self.branchtable[PUSH] = self.handle_push
+        self.branchtable[POP] = self.handle_pop
     
     def handle_ldi(self, pc):
         value = self.ram_read(pc)
@@ -27,9 +34,29 @@ class CPU:
         self.print_reg(pc)
 
     def handle_mul(self, pc):
-        reg_a = int(self.ram[pc + 1])
-        reg_b = int(self.ram[pc + 2])
+        reg_a = self.ram[pc + 1]
+        reg_b = self.ram[pc + 2]
         self.alu('MUL', reg_a, reg_b)
+
+    def handle_push(self, pc):
+        # Derement value of last register by 1
+        self.reg[self.sp] -= 1
+        # From instructions, copy register number from RAM
+        reg_num = self.ram[pc + 1]
+        # Get the register value from Register
+        reg_val = self.reg[reg_num]
+        # Save the value to Ram
+        self.ram[self.reg[self.sp]] = reg_val
+
+    def handle_pop(self, pc):
+        # Use current sp to copy the value from RAM
+        val = self.ram[self.reg[self.sp]]
+        # From instructions, copy register number from RAM
+        reg_num = self.ram[pc + 1]
+        # Copy value to register
+        self.reg[reg_num] = val
+        # Increment value of last register by 1
+        self.reg[self.sp] += 1
 
     def load(self):
         """Load a program into memory."""
@@ -126,7 +153,6 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        # AND masking: to get `DDDD` or the last 4 digits
 
         halt = False
         pc = 0
