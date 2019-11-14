@@ -8,24 +8,37 @@ HLT = 0b00000001
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000 
+RET = 0b00010001
+ADD = 0b10100000 
 
 
 class CPU:
     """Main CPU class."""
     # Last register reserved for stack pointer(sp)
     sp = -1
+    # For CALL and RET program counter
+    pc_m = 0
     def __init__(self):
         """Construct a new CPU."""
         self.reg = [0] * 8
         self.ram = [0] * 256
-        self.reg[self.sp] = 0xF4 
+        self.reg[self.sp] = 0xF4
+        self.halt = False
         self.branchtable = {}
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[MUL] = self.handle_mul
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
-    
+        self.branchtable[CALL] = self.handle_call
+        self.branchtable[RET] = self.handle_ret
+        self.branchtable[ADD] = self.handle_add
+        self.branchtable[HLT] = self.handle_hlt
+
+    def handle_hlt(self, pc):
+        self.halt = True
+
     def handle_ldi(self, pc):
         value = self.ram_read(pc)
         self.ram_write(pc, value)
@@ -38,6 +51,11 @@ class CPU:
         reg_b = self.ram[pc + 2]
         self.alu('MUL', reg_a, reg_b)
 
+    def handle_add(self, pc):
+        reg_a = self.ram[pc + 1]
+        reg_b = self.ram[pc + 2]
+        self.alu('ADD', reg_a, reg_b)
+    
     def handle_push(self, pc):
         # Derement value of last register by 1
         self.reg[self.sp] -= 1
@@ -56,6 +74,22 @@ class CPU:
         # Copy value to register
         self.reg[reg_num] = val
         # Increment value of last register by 1
+        self.reg[self.sp] += 1
+
+    def handle_call(self, pc):
+        # Push return address to stack
+        return_address = pc + 2
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = return_address
+
+        # Set the pc to the value in the register
+        reg_num = self.ram[pc + 1]
+        self.pc_m = self.reg[reg_num]
+
+    def handle_ret(self, pc):
+        # Pop the return address off the stack
+        # Store it in the pc
+        self.pc_m = self.ram[self.reg[self.sp]]
         self.reg[self.sp] += 1
 
     def load(self):
@@ -154,10 +188,9 @@ class CPU:
     def run(self):
         """Run the CPU."""
 
-        halt = False
         pc = 0
 
-        while not halt:
+        while not self.halt:
             
             # Get the byte of info
             instruction = self.ram[pc]
@@ -165,18 +198,20 @@ class CPU:
             # Get the 2 bit of info for the operand amount
             get_operand_num = instruction >> 6
 
-            # If not HLT
-            if instruction != HLT:
+            # If PC mutators, call or ret
+            pc_instruction = 0b00010000
+            # 1 if it's a pc instruction and 0 if not
+            pc_set = (pc_instruction & instruction) >> 4
+
+            # Run program from branchtable
+            try:
                 self.branchtable[instruction](pc)
+            except Exception as e:
+                print(f'Error:{e}\n Index: {pc}')
 
-            # If HLT
-            elif instruction == HLT:
-                halt = True
-
-            # If Error
+            # If pc_set is 1: Either CALL or RET
+            if pc_set:
+                pc = self.pc_m
             else:
-                print(f'Unknown instruction at index {pc}')
-                sys.exit(1)
-
-            # Increment by: Extracted from the instruction
-            pc += get_operand_num + 1
+                # Increment by: Extracted from the instruction
+                pc += get_operand_num + 1
